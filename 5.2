@@ -1,0 +1,34 @@
+// Exercise 2: Bare Metal UART - 115200 baud, 7E2 format
+
+void uart_init() {
+  // Baud rate = 115200
+  // UBRR = (16MHz / (16 * baud)) - 1 = (16000000 / (16*115200)) - 1 ≈ 8
+  UBRR0H = 0;
+  UBRR0L = 8;
+
+  // Enable transmitter
+  UCSR0B = (1 << TXEN0);
+
+  // Frame format:
+  // 7 data bits (UCSZ01 = 1)
+  // Even parity (UPM01 = 1)
+  // 2 stop bits (USBS0 = 1)
+  // UCSZ00 must be 0 for 7-bit mode
+  UCSR0C = (1 << UPM01) | (1 << USBS0) | (1 << UCSZ01);
+}
+
+void uart_send(uint8_t data) {
+  while (!(UCSR0A & (1 << UDRE0))); // Wait until buffer empty
+  UDR0 = data; // Send byte
+}
+
+void setup() {
+  uart_init();
+}
+
+void loop() {
+  uart_send('H');
+  uart_send('i');
+  uart_send('\n');
+  delay(500);
+}
