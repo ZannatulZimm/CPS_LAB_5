@@ -1,0 +1,56 @@
+#include <Wire.h>
+
+#define SENSOR_ADDR 0x20
+
+void setup() {
+  Wire.begin();
+
+  // Set D9 as output for fan control
+  DDRB |= (1 << DDB1);   // Pin 9 = PB1
+
+  // Configure Timer1 for PWM (Fast PWM 8-bit)
+  TCCR1A = (1 << COM1A1) | (1 << WGM10);
+  TCCR1B = (1 << WGM12)  | (1 << CS11);  // Prescaler 8
+}
+
+int readDistance() {
+  // Trigger measurement
+  Wire.beginTransmission(SENSOR_ADDR);
+  Wire.write(0x01);  // Trigger command (module dependent)
+  Wire.endTransmission();
+
+  delay(100);
+
+  // Read 2 bytes
+  Wire.requestFrom(SENSOR_ADDR, 2);
+  if (Wire.available() == 2) {
+    uint8_t h = Wire.read();
+    uint8_t l = Wire.read();
+    return (h << 8) | l;  // Distance in mm
+  }
+
+  return -1;
+}
+
+void setFanSpeed(int speed) {
+  OCR1A = speed;  // 0–255
+}
+
+void loop() {
+  int dist_mm = readDistance();
+  int dist_cm = dist_mm / 10;
+
+  if (dist_cm <= 4) {
+    setFanSpeed(255);  // Full speed
+  }
+  else if (dist_cm > 4 && dist_cm <= 20) {
+    // Map 5–20 cm → 200–50 PWM
+    int pwm = map(dist_cm, 5, 20, 200, 50);
+    setFanSpeed(pwm);
+  }
+  else {
+    setFanSpeed(0);  // Turn off fan
+  }
+
+  delay(2000);  // Sample every 2 seconds
+}
